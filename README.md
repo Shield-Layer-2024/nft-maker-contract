@@ -31,6 +31,9 @@ Then edit the `.env` file with your own values:
 INFURA_API_KEY=your_infura_api_key
 PRIVATE_KEY=your_wallet_private_key
 ETHERSCAN_API_KEY=your_etherscan_api_key
+BSC_RPC_URL=https://bsc-dataseed1.binance.org
+BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545
+BSCSCAN_API_KEY=your_bscscan_api_key
 ```
 
 ## Available Commands
@@ -53,6 +56,12 @@ npm run deploy:local
 
 # Deploy to Sepolia testnet
 npm run deploy:sepolia
+
+# Deploy to BSC mainnet
+npm run deploy:bsc
+
+# Deploy to BSC testnet
+npm run deploy:bsc-testnet
 
 # Verify contract on Etherscan
 npm run verify <CONTRACT_ADDRESS>
