@@ -314,4 +314,52 @@ describe("NFTCollection", function () {
             ).to.be.revertedWith("Start time must be in the future");
         });
     });
+
+    describe("Image Update", function () {
+        it("Should allow owner to update image", async function () {
+            const newImageUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
+            const oldImageUrl = await nftCollection.image();
+            
+            await expect(nftCollection.setImage(newImageUrl))
+                .to.emit(nftCollection, "ImageUpdated")
+                .withArgs(oldImageUrl, newImageUrl);
+                
+            expect(await nftCollection.image()).to.equal(newImageUrl);
+        });
+
+        it("Should not allow non-owner to update image", async function () {
+            const newImageUrl = "https://example.com/new-image.png";
+            
+            await expect(
+                nftCollection.connect(addr1).setImage(newImageUrl)
+            ).to.be.revertedWithCustomError(nftCollection, "OwnableUnauthorizedAccount");
+        });
+
+        it("Should reject empty image URL", async function () {
+            await expect(
+                nftCollection.setImage("")
+            ).to.be.revertedWith("Image URL cannot be empty");
+        });
+
+        it("Should update tokenURI after image change", async function () {
+            // First mint an NFT
+            await nftCollection.connect(addr1).mint({ value: mintPrice });
+            const originalTokenURI = await nftCollection.tokenURI(0);
+            
+            // Update image
+            const newImageUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
+            await nftCollection.setImage(newImageUrl);
+            
+            // Check that tokenURI reflects new image
+            const updatedTokenURI = await nftCollection.tokenURI(0);
+            expect(updatedTokenURI).to.not.equal(originalTokenURI);
+            
+            // Decode and verify new image in metadata
+            const base64Data = updatedTokenURI.split(",")[1];
+            const jsonData = JSON.parse(
+                Buffer.from(base64Data, "base64").toString()
+            );
+            expect(jsonData.image).to.equal(newImageUrl);
+        });
+    });
 });

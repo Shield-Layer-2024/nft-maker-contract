@@ -28,3 +28,5 @@ ignition/deployments/chain-31337
 .env.local
 .env.*
 !.env.example
+
+/.cursor

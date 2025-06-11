@@ -12,8 +12,6 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
     uint256 public mintPrice;
     string public description;
     string public image;
-
-    string private _cachedTokenURI;
     
     // Minting time control
     uint256 public mintStartTime;
@@ -35,6 +33,7 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
     event WhitelistRemoved(address[] addresses);
     event WhitelistStatusUpdated(bool enabled);
     event MintPriceUpdated(uint256 oldPrice, uint256 newPrice);
+    event ImageUpdated(string oldImage, string newImage);
     
     constructor(
         string memory _name,
@@ -55,7 +54,6 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
         description = initDescription;
         image = imageUrl;
         whitelistOnly = _whitelistOnly;
-        _cachedTokenURI = _generateTokenURI();
         maxMintsPerWallet = _maxMintsPerWallet;
         
         // Set minting time window if provided
@@ -96,12 +94,18 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
         
         uint256 tokenId = totalSupply;
         _safeMint(msg.sender, tokenId);
-        _setTokenURI(tokenId, _generateTokenURI());
+        // Note: We don't set individual tokenURI here to allow dynamic updates
 
         mintsPerWallet[msg.sender]++;
         totalSupply++;
         
         emit NFTMinted(msg.sender, tokenId, msg.value);
+    }
+
+    // Override tokenURI to support dynamic updates
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        _requireOwned(tokenId);
+        return _generateTokenURI();
     }
 
     function _generateTokenURI() internal view returns (string memory) {
@@ -128,6 +132,15 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
         uint256 oldPrice = mintPrice;
         mintPrice = _newPrice;
         emit MintPriceUpdated(oldPrice, _newPrice);
+    }
+    
+    // Update image URL
+    function setImage(string memory _newImageUrl) external onlyOwner {
+        require(bytes(_newImageUrl).length > 0, "Image URL cannot be empty");
+        string memory oldImage = image;
+        image = _newImageUrl;
+        
+        emit ImageUpdated(oldImage, _newImageUrl);
     }
 
     
