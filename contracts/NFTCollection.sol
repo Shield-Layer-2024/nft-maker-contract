@@ -5,8 +5,12 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/interfaces/IERC4906.sol";
 
 contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
+    using Strings for uint256;
+    
     uint256 public maxSupply;
     uint256 public totalSupply;
     uint256 public mintPrice;
@@ -118,7 +122,12 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
                             abi.encodePacked(
                                 '{"name": "', name(), '",',
                                 '"description": "', description, '",',
-                                '"image": "', image, '"}'
+                                '"image": "', image, '",',
+                                '"external_url": "https://shieldlayer.xyz",',
+                                '"attributes": [',
+                                    '{"trait_type": "Collection", "value": "', name(), '"},',
+                                    '{"trait_type": "Total Supply", "value": ', maxSupply.toString(), '}',
+                                ']}'
                             )
                         )
                     )
@@ -126,6 +135,8 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
             )
         );
     }
+
+
 
     // Update mint price
     function setMintPrice(uint256 _newPrice) external onlyOwner {
@@ -141,6 +152,13 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
         image = _newImageUrl;
         
         emit ImageUpdated(oldImage, _newImageUrl);
+        
+        // Emit ERC-4906 compliant event to notify marketplaces of metadata update
+        if (totalSupply > 0) {
+            // This is the ERC-4906 standard event for batch metadata updates
+            // Most NFT marketplaces listen for this event to refresh metadata
+            emit BatchMetadataUpdate(0, totalSupply - 1);
+        }
     }
 
     
@@ -183,5 +201,10 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
     // Withdraw ETH from contract
     function withdraw() external onlyOwner {
         payable(owner()).transfer(address(this).balance);
+    }
+    
+    // Override supportsInterface to include ERC4906
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == bytes4(0x49064906) || super.supportsInterface(interfaceId);
     }
 } 

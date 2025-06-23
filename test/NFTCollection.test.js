@@ -360,6 +360,26 @@ describe("NFTCollection", function () {
                 Buffer.from(base64Data, "base64").toString()
             );
             expect(jsonData.image).to.equal(newImageUrl);
+            expect(jsonData.external_url).to.equal("https://shieldlayer.xyz");
+            expect(jsonData.attributes).to.be.an('array');
+        });
+
+        it("Should emit BatchMetadataUpdate event when image is updated", async function () {
+            // First mint an NFT
+            await nftCollection.connect(addr1).mint({ value: mintPrice });
+            
+            // Update image and check for BatchMetadataUpdate event
+            const newImageUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
+            await expect(nftCollection.setImage(newImageUrl))
+                .to.emit(nftCollection, "ImageUpdated")
+                .withArgs(imageUrl, newImageUrl)
+                .and.to.emit(nftCollection, "BatchMetadataUpdate")
+                .withArgs(0, 0);
+        });
+
+        it("Should support ERC4906 interface", async function () {
+            // ERC4906 interface ID is 0x49064906
+            expect(await nftCollection.supportsInterface("0x49064906")).to.be.true;
         });
     });
 });
