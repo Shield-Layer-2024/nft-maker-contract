@@ -11,8 +11,8 @@
     "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
     "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
     "verify": "npx hardhat verify",
-    "deploy:bsc": "npx hardhat run scripts/deploy.js --network bsc",
-    "deploy:bsc-testnet": "npx hardhat run scripts/deploy.js --network bscTestnet"
+    "deploy:base": "npx hardhat run scripts/deploy.js --network base",
+    "deploy:bsc": "npx hardhat run scripts/deploy.js --network bsc"
   },
   "keywords": [
     "nft",

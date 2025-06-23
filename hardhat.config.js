@@ -18,14 +18,14 @@ module.exports = {
       url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: [process.env.PRIVATE_KEY]
     },
+    base: {
+      url: `https://base-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      chainId: 8453,
+      accounts: [process.env.PRIVATE_KEY]
+    },
     bsc: {
       url: process.env.BSC_RPC_URL,
       chainId: 56,
-      accounts: [process.env.PRIVATE_KEY],
-    },
-    bscTestnet: {
-      url: process.env.BSC_TESTNET_RPC_URL,
-      chainId: 97,
       accounts: [process.env.PRIVATE_KEY],
     }
   },
@@ -34,25 +34,26 @@ module.exports = {
       // Ethereum networks
       mainnet: process.env.ETHERSCAN_API_KEY,
       sepolia: process.env.ETHERSCAN_API_KEY,
+      // Base networks
+      base: process.env.BASESCAN_API_KEY,
       // BSC networks
-      bsc: process.env.BSCSCAN_API_KEY,
-      bscTestnet: process.env.BSCSCAN_API_KEY
+      bsc: process.env.BSCSCAN_API_KEY
     },
     customChains: [
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
+      },
       {
         network: "bsc",
         chainId: 56,
         urls: {
           apiURL: "https://api.bscscan.com/api",
           browserURL: "https://bscscan.com"
-        }
-      },
-      {
-        network: "bscTestnet",
-        chainId: 97,
-        urls: {
-          apiURL: "https://api-testnet.bscscan.com/api",
-          browserURL: "https://testnet.bscscan.com"
         }
       }
     ]
