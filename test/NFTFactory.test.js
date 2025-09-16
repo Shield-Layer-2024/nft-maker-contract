@@ -32,6 +32,7 @@ describe("NFTFactory", function () {
 
     describe("Collection Creation", function () {
         const collectionName = "Test Collection";
+        const collectionSymbol = "TC";
         const description = "Test Description";
         const maxSupply = 1000;
         const mintPrice = ethers.parseEther("0.1");
@@ -52,6 +53,7 @@ describe("NFTFactory", function () {
         it("Should create a new collection with correct parameters", async function () {
             const tx = await nftFactory.createCollection(
                 collectionName,
+                collectionSymbol,
                 description,
                 maxSupply,
                 mintPrice,
@@ -112,6 +114,7 @@ describe("NFTFactory", function () {
         it("Should create collection with no time restrictions", async function () {
             const tx = await nftFactory.createCollection(
                 collectionName,
+                collectionSymbol,
                 description,
                 maxSupply,
                 mintPrice,
@@ -151,6 +154,7 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
@@ -169,6 +173,7 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     "",
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
@@ -182,10 +187,29 @@ describe("NFTFactory", function () {
             ).to.be.revertedWith("Name is required");
         });
 
+        it("Should fail with empty symbol", async function () {
+            await expect(
+                nftFactory.createCollection(
+                    collectionName,
+                    "",
+                    description,
+                    maxSupply,
+                    mintPrice,
+                    imageUrl,
+                    whitelistOnly,
+                    initialWhitelist,
+                    maxMintsPerWallet,
+                    mintStartTime,
+                    mintEndTime
+                )
+            ).to.be.revertedWith("Symbol is required");
+        });
+
         it("Should fail with zero max supply", async function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     0,
                     mintPrice,
@@ -203,6 +227,7 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
@@ -220,6 +245,7 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
@@ -263,7 +289,8 @@ describe("NFTFactory", function () {
 
             await nftFactory.createCollection(
                 "Test",
-                "Test",
+                "TEST",
+                "Test Collection",
                 1000,
                 ethers.parseEther("0.1"),
                 "https://example.com/image.png",
@@ -294,7 +321,8 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     "Test",
-                    "Test",
+                    "TEST",
+                    "Test Collection",
                     1000,
                     ethers.parseEther("0.1"),
                     "https://example.com/image.png",
@@ -311,7 +339,8 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     "Test",
-                    "Test",
+                    "TEST",
+                    "Test Collection",
                     1000,
                     ethers.parseEther("0.1"),
                     "https://example.com/image.png",

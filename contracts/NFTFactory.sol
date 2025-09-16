@@ -32,6 +32,7 @@ contract NFTFactory is Ownable, Pausable {
     // @custom:payable Creation fee must be sent with the transaction
     function createCollection(
         string memory name,
+        string memory symbol,
         string memory description,
         uint256 maxSupply,
         uint256 mintPrice,
@@ -43,6 +44,7 @@ contract NFTFactory is Ownable, Pausable {
         uint256 mintEndTime       // Optional: 0 means no end time restriction,Unix timestamp in seconds
     ) external payable whenNotPaused returns (address) {
         require(bytes(name).length > 0, "Name is required");
+        require(bytes(symbol).length > 0, "Symbol is required");
         require(maxSupply > 0, "Max supply must be positive");
         require(bytes(imageUrl).length > 0, "imageUrl is required");
         require(msg.value >= creationFee, "Insufficient creation fee");
@@ -53,7 +55,7 @@ contract NFTFactory is Ownable, Pausable {
         
         NFTCollection newCollection = new NFTCollection(
             name,
-            name,
+            symbol,
             description,
             maxSupply,
             mintPrice,
