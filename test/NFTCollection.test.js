@@ -15,7 +15,9 @@ describe("NFTCollection", function () {
     const description = "Test Description";
     const maxSupply = 1000;
     const mintPrice = ethers.parseEther("0.1");
-    const imageUrl = "https://example.com/image.png";
+    const mediaUrl = "https://example.com/video.mp4";
+    const thumbnailUrl = "https://example.com/thumbnail.png";
+    const mediaType = 1; // VIDEO
     const whitelistOnly = false;
     const maxMintsPerWallet = 3;
     const mintStartTime = 0;  // No restriction by default
@@ -33,7 +35,9 @@ describe("NFTCollection", function () {
             maxSupply,
             mintPrice,
             owner.address,
-            imageUrl,
+            mediaUrl,
+            thumbnailUrl,
+            mediaType,
             whitelistOnly,
             initialWhitelist,
             maxMintsPerWallet,
@@ -50,7 +54,11 @@ describe("NFTCollection", function () {
             expect(await nftCollection.description()).to.equal(description);
             expect(await nftCollection.maxSupply()).to.equal(maxSupply);
             expect(await nftCollection.mintPrice()).to.equal(mintPrice);
-            expect(await nftCollection.image()).to.equal(imageUrl);
+            // Verify media information
+            const mediaInfo = await nftCollection.getMediaInfo();
+            expect(mediaInfo.mediaUrl).to.equal(mediaUrl);
+            expect(mediaInfo.thumbnailUrl).to.equal(thumbnailUrl);
+            expect(mediaInfo.mediaType).to.equal(mediaType);
             expect(await nftCollection.owner()).to.equal(owner.address);
             expect(await nftCollection.totalSupply()).to.equal(0);
             expect(await nftCollection.whitelistOnly()).to.equal(whitelistOnly);
@@ -83,7 +91,7 @@ describe("NFTCollection", function () {
             const smallMaxSupply = 2;
             const collection = await NFTCollection.deploy(
                 name, symbol, description, smallMaxSupply, mintPrice,
-                owner.address, imageUrl, whitelistOnly, [], maxMintsPerWallet,
+                owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], maxMintsPerWallet,
                 0, 0  // No time restrictions
             );
 
@@ -99,7 +107,7 @@ describe("NFTCollection", function () {
             const smallMaxMints = 2;
             const collection = await NFTCollection.deploy(
                 name, symbol, description, maxSupply, mintPrice,
-                owner.address, imageUrl, whitelistOnly, [], smallMaxMints,
+                owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], smallMaxMints,
                 0, 0  // No time restrictions
             );
 
@@ -184,7 +192,7 @@ describe("NFTCollection", function () {
             );
             expect(jsonData.name).to.equal(name);
             expect(jsonData.description).to.equal(description);
-            expect(jsonData.image).to.equal(imageUrl);
+            expect(jsonData.image).to.equal(thumbnailUrl); // For VIDEO type, image should be thumbnail
         });
     });
 
@@ -232,7 +240,7 @@ describe("NFTCollection", function () {
 
             const collection = await NFTCollection.deploy(
                 name, symbol, description, maxSupply, mintPrice,
-                owner.address, imageUrl, whitelistOnly, [], maxMintsPerWallet,
+                owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], maxMintsPerWallet,
                 startTime, endTime
             );
 
@@ -257,7 +265,7 @@ describe("NFTCollection", function () {
 
             const collection = await NFTCollection.deploy(
                 name, symbol, description, maxSupply, mintPrice,
-                owner.address, imageUrl, whitelistOnly, [], maxMintsPerWallet,
+                owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], maxMintsPerWallet,
                 startTime, endTime
             );
 
@@ -277,7 +285,7 @@ describe("NFTCollection", function () {
         it("Should allow minting with no time restrictions", async function () {
             const collection = await NFTCollection.deploy(
                 name, symbol, description, maxSupply, mintPrice,
-                owner.address, imageUrl, whitelistOnly, [], maxMintsPerWallet,
+                owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], maxMintsPerWallet,
                 0, 0  // No time restrictions
             );
 
@@ -294,7 +302,7 @@ describe("NFTCollection", function () {
             await expect(
                 NFTCollection.deploy(
                     name, symbol, description, maxSupply, mintPrice,
-                    owner.address, imageUrl, whitelistOnly, [], maxMintsPerWallet,
+                    owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], maxMintsPerWallet,
                     startTime, endTime
                 )
             ).to.be.revertedWith("End time must be after start time");
@@ -308,58 +316,85 @@ describe("NFTCollection", function () {
             await expect(
                 NFTCollection.deploy(
                     name, symbol, description, maxSupply, mintPrice,
-                    owner.address, imageUrl, whitelistOnly, [], maxMintsPerWallet,
+                    owner.address, mediaUrl, thumbnailUrl, mediaType, whitelistOnly, [], maxMintsPerWallet,
                     startTime, endTime
                 )
             ).to.be.revertedWith("Start time must be in the future");
         });
     });
 
-    describe("Image Update", function () {
-        it("Should allow owner to update image", async function () {
-            const newImageUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
-            const oldImageUrl = await nftCollection.image();
+    describe("Media Update", function () {
+        it("Should allow owner to update media URL", async function () {
+            const newMediaUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
+            const oldMediaInfo = await nftCollection.getMediaInfo();
             
-            await expect(nftCollection.setImage(newImageUrl))
-                .to.emit(nftCollection, "ImageUpdated")
-                .withArgs(oldImageUrl, newImageUrl);
+            await expect(nftCollection.setMediaUrl(newMediaUrl))
+                .to.emit(nftCollection, "MediaUpdated")
+                .withArgs(oldMediaInfo.mediaUrl, newMediaUrl, oldMediaInfo.thumbnailUrl, oldMediaInfo.thumbnailUrl, oldMediaInfo.mediaType);
                 
-            expect(await nftCollection.image()).to.equal(newImageUrl);
+            const updatedMediaInfo = await nftCollection.getMediaInfo();
+            expect(updatedMediaInfo.mediaUrl).to.equal(newMediaUrl);
         });
 
-        it("Should not allow non-owner to update image", async function () {
-            const newImageUrl = "https://example.com/new-image.png";
+        it("Should allow owner to update thumbnail URL", async function () {
+            const newThumbnailUrl = "https://example.com/new-thumbnail.png";
+            const oldMediaInfo = await nftCollection.getMediaInfo();
+            
+            await expect(nftCollection.setThumbnailUrl(newThumbnailUrl))
+                .to.emit(nftCollection, "ThumbnailUpdated")
+                .withArgs(oldMediaInfo.thumbnailUrl, newThumbnailUrl);
+                
+            const updatedMediaInfo = await nftCollection.getMediaInfo();
+            expect(updatedMediaInfo.thumbnailUrl).to.equal(newThumbnailUrl);
+        });
+
+        it("Should allow owner to update both media and thumbnail URLs", async function () {
+            const newMediaUrl = "https://example.com/new-video.mp4";
+            const newThumbnailUrl = "https://example.com/new-thumbnail.png";
+            const oldMediaInfo = await nftCollection.getMediaInfo();
+            
+            await expect(nftCollection.setMedia(newMediaUrl, newThumbnailUrl))
+                .to.emit(nftCollection, "MediaUpdated")
+                .withArgs(oldMediaInfo.mediaUrl, newMediaUrl, oldMediaInfo.thumbnailUrl, newThumbnailUrl, oldMediaInfo.mediaType);
+                
+            const updatedMediaInfo = await nftCollection.getMediaInfo();
+            expect(updatedMediaInfo.mediaUrl).to.equal(newMediaUrl);
+            expect(updatedMediaInfo.thumbnailUrl).to.equal(newThumbnailUrl);
+        });
+
+        it("Should not allow non-owner to update media", async function () {
+            const newMediaUrl = "https://example.com/new-video.mp4";
             
             await expect(
-                nftCollection.connect(addr1).setImage(newImageUrl)
+                nftCollection.connect(addr1).setMediaUrl(newMediaUrl)
             ).to.be.revertedWithCustomError(nftCollection, "OwnableUnauthorizedAccount");
         });
 
-        it("Should reject empty image URL", async function () {
+        it("Should reject empty media URL", async function () {
             await expect(
-                nftCollection.setImage("")
-            ).to.be.revertedWith("Image URL cannot be empty");
+                nftCollection.setMediaUrl("")
+            ).to.be.revertedWith("Media URL cannot be empty");
         });
 
-        it("Should update tokenURI after image change", async function () {
+        it("Should update tokenURI after media change", async function () {
             // First mint an NFT
             await nftCollection.connect(addr1).mint({ value: mintPrice });
             const originalTokenURI = await nftCollection.tokenURI(0);
             
-            // Update image
-            const newImageUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
-            await nftCollection.setImage(newImageUrl);
+            // Update media
+            const newMediaUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
+            await nftCollection.setMediaUrl(newMediaUrl);
             
-            // Check that tokenURI reflects new image
+            // Check that tokenURI reflects new media
             const updatedTokenURI = await nftCollection.tokenURI(0);
             expect(updatedTokenURI).to.not.equal(originalTokenURI);
             
-            // Decode and verify new image in metadata
+            // Decode and verify new media in metadata
             const base64Data = updatedTokenURI.split(",")[1];
             const jsonData = JSON.parse(
                 Buffer.from(base64Data, "base64").toString()
             );
-            expect(jsonData.image).to.equal(newImageUrl);
+            expect(jsonData.animation_url).to.equal(newMediaUrl); // For VIDEO type, check animation_url
             expect(jsonData.external_url).to.equal("https://shieldlayer.xyz");
             expect(jsonData.attributes).to.be.an('array');
         });
@@ -368,11 +403,12 @@ describe("NFTCollection", function () {
             // First mint an NFT
             await nftCollection.connect(addr1).mint({ value: mintPrice });
             
-            // Update image and check for BatchMetadataUpdate event
-            const newImageUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
-            await expect(nftCollection.setImage(newImageUrl))
-                .to.emit(nftCollection, "ImageUpdated")
-                .withArgs(imageUrl, newImageUrl)
+            // Update media and check for BatchMetadataUpdate event
+            const newMediaUrl = "https://yellow-advanced-tapir-566.mypinata.cloud/ipfs/bafkreihm66otwb66msutwb5opa2vgdsbnicb6cndwzh7mhprmrziu5qevm";
+            const oldMediaInfo = await nftCollection.getMediaInfo();
+            await expect(nftCollection.setMediaUrl(newMediaUrl))
+                .to.emit(nftCollection, "MediaUpdated")
+                .withArgs(oldMediaInfo.mediaUrl, newMediaUrl, oldMediaInfo.thumbnailUrl, oldMediaInfo.thumbnailUrl, oldMediaInfo.mediaType)
                 .and.to.emit(nftCollection, "BatchMetadataUpdate")
                 .withArgs(0, 0);
         });
@@ -380,6 +416,149 @@ describe("NFTCollection", function () {
         it("Should support ERC4906 interface", async function () {
             // ERC4906 interface ID is 0x49064906
             expect(await nftCollection.supportsInterface("0x49064906")).to.be.true;
+        });
+    });
+
+    describe("Metadata Generation", function () {
+        beforeEach(async function () {
+            // Mint a token for testing
+            await nftCollection.connect(addr1).mint({ value: mintPrice });
+        });
+
+        it("Should generate correct metadata for VIDEO type", async function () {
+            const tokenURI = await nftCollection.tokenURI(0);
+            
+            // Decode base64 and parse JSON
+            const base64Data = tokenURI.split(',')[1];
+            const jsonString = Buffer.from(base64Data, 'base64').toString();
+            const metadata = JSON.parse(jsonString);
+            
+            expect(metadata.name).to.equal(name);
+            expect(metadata.description).to.equal(description);
+            expect(metadata.image).to.equal(thumbnailUrl); // For VIDEO, image should be thumbnail
+            expect(metadata.animation_url).to.equal(mediaUrl); // animation_url should be the video
+            expect(metadata.attributes).to.be.an('array');
+            
+            // Check for media type attribute
+            const mediaTypeAttr = metadata.attributes.find(attr => attr.trait_type === "Media Type");
+            expect(mediaTypeAttr.value).to.equal("Video");
+        });
+
+        it("Should generate correct metadata for IMAGE type", async function () {
+            // Deploy a new collection with IMAGE type
+            const imageCollection = await NFTCollection.deploy(
+                "Image NFT",
+                "IMG",
+                "Image Description",
+                maxSupply,
+                mintPrice,
+                owner.address,
+                "https://example.com/image.png",
+                "", // No thumbnail for image
+                0, // IMAGE type
+                whitelistOnly,
+                [addr1.address],
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+            await imageCollection.waitForDeployment();
+            
+            // Mint a token
+            await imageCollection.connect(addr1).mint({ value: mintPrice });
+            
+            const tokenURI = await imageCollection.tokenURI(0);
+            
+            // Decode base64 and parse JSON
+            const base64Data = tokenURI.split(',')[1];
+            const jsonString = Buffer.from(base64Data, 'base64').toString();
+            const metadata = JSON.parse(jsonString);
+            
+            expect(metadata.name).to.equal("Image NFT");
+            expect(metadata.image).to.equal("https://example.com/image.png"); // For IMAGE, image should be the media URL
+            expect(metadata.animation_url).to.be.undefined; // No animation_url for images
+            
+            // Check for media type attribute
+            const mediaTypeAttr = metadata.attributes.find(attr => attr.trait_type === "Media Type");
+            expect(mediaTypeAttr.value).to.equal("Image");
+        });
+
+        it("Should generate correct metadata for AUDIO type", async function () {
+            // Deploy a new collection with AUDIO type
+            const audioCollection = await NFTCollection.deploy(
+                "Audio NFT",
+                "AUD",
+                "Audio Description",
+                maxSupply,
+                mintPrice,
+                owner.address,
+                "https://example.com/audio.mp3",
+                "https://example.com/cover.png",
+                2, // AUDIO type
+                whitelistOnly,
+                [addr1.address],
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+            await audioCollection.waitForDeployment();
+            
+            // Mint a token
+            await audioCollection.connect(addr1).mint({ value: mintPrice });
+            
+            const tokenURI = await audioCollection.tokenURI(0);
+            
+            // Decode base64 and parse JSON
+            const base64Data = tokenURI.split(',')[1];
+            const jsonString = Buffer.from(base64Data, 'base64').toString();
+            const metadata = JSON.parse(jsonString);
+            
+            expect(metadata.name).to.equal("Audio NFT");
+            expect(metadata.image).to.equal("https://example.com/cover.png"); // For AUDIO, image should be cover
+            expect(metadata.animation_url).to.equal("https://example.com/audio.mp3"); // animation_url should be the audio
+            
+            // Check for media type attribute
+            const mediaTypeAttr = metadata.attributes.find(attr => attr.trait_type === "Media Type");
+            expect(mediaTypeAttr.value).to.equal("Audio");
+        });
+
+        it("Should generate correct metadata for MODEL_3D type", async function () {
+            // Deploy a new collection with MODEL_3D type
+            const modelCollection = await NFTCollection.deploy(
+                "3D Model NFT",
+                "3D",
+                "3D Model Description",
+                maxSupply,
+                mintPrice,
+                owner.address,
+                "https://example.com/model.glb",
+                "https://example.com/model-preview.png",
+                3, // MODEL_3D type
+                whitelistOnly,
+                [addr1.address],
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+            await modelCollection.waitForDeployment();
+            
+            // Mint a token
+            await modelCollection.connect(addr1).mint({ value: mintPrice });
+            
+            const tokenURI = await modelCollection.tokenURI(0);
+            
+            // Decode base64 and parse JSON
+            const base64Data = tokenURI.split(',')[1];
+            const jsonString = Buffer.from(base64Data, 'base64').toString();
+            const metadata = JSON.parse(jsonString);
+            
+            expect(metadata.name).to.equal("3D Model NFT");
+            expect(metadata.image).to.equal("https://example.com/model-preview.png"); // For 3D, image should be preview
+            expect(metadata.animation_url).to.equal("https://example.com/model.glb"); // animation_url should be the model
+            
+            // Check for media type attribute
+            const mediaTypeAttr = metadata.attributes.find(attr => attr.trait_type === "Media Type");
+            expect(mediaTypeAttr.value).to.equal("3D Model");
         });
     });
 });
