@@ -14,7 +14,9 @@ contract NFTFactory is Ownable, Pausable {
         address indexed creator,
         address indexed collection,
         string name,
-        string imageUrl,
+        string mediaUrl,
+        string thumbnailUrl,
+        NFTCollection.MediaType mediaType,
         uint256 maxSupply,
         uint256 mintPrice,
         uint256 mintStartTime,
@@ -32,33 +34,42 @@ contract NFTFactory is Ownable, Pausable {
     // @custom:payable Creation fee must be sent with the transaction
     function createCollection(
         string memory name,
+        string memory symbol,
         string memory description,
         uint256 maxSupply,
         uint256 mintPrice,
-        string memory imageUrl,    // https://game.example/item-id-8u5h2m.png
+        string memory mediaUrl,       // Primary media file URL
+        string memory thumbnailUrl,   // Thumbnail/cover image URL (optional, can be empty)
+        uint8 mediaTypeValue,         // 0=IMAGE, 1=VIDEO, 2=AUDIO, 3=MODEL_3D
         bool whitelistOnly,
         address[] memory initialWhitelist,
         uint256 maxMintsPerWallet,
-        uint256 mintStartTime,    // Optional: 0 means no start time restriction,Unix timestamp in seconds
-        uint256 mintEndTime       // Optional: 0 means no end time restriction,Unix timestamp in seconds
+        uint256 mintStartTime,        // Optional: 0 means no start time restriction,Unix timestamp in seconds
+        uint256 mintEndTime           // Optional: 0 means no end time restriction,Unix timestamp in seconds
     ) external payable whenNotPaused returns (address) {
         require(bytes(name).length > 0, "Name is required");
+        require(bytes(symbol).length > 0, "Symbol is required");
         require(maxSupply > 0, "Max supply must be positive");
-        require(bytes(imageUrl).length > 0, "imageUrl is required");
+        require(bytes(mediaUrl).length > 0, "Media URL is required");
+        require(mediaTypeValue <= 3, "Invalid media type");
         require(msg.value >= creationFee, "Insufficient creation fee");
         require(maxMintsPerWallet > 0, "Max mints per wallet must be positive");
         if (whitelistOnly) {
             require(initialWhitelist.length > 0, "Whitelist is required");
         }
         
+        NFTCollection.MediaType mediaType = NFTCollection.MediaType(mediaTypeValue);
+        
         NFTCollection newCollection = new NFTCollection(
             name,
-            name,
+            symbol,
             description,
             maxSupply,
             mintPrice,
-            msg.sender,    //Collection owner
-            imageUrl,    
+            msg.sender,    // Collection owner
+            mediaUrl,
+            thumbnailUrl,
+            mediaType,
             whitelistOnly,
             initialWhitelist,
             maxMintsPerWallet,
@@ -70,7 +81,9 @@ contract NFTFactory is Ownable, Pausable {
             msg.sender,
             address(newCollection),
             name,
-            imageUrl,  
+            mediaUrl,
+            thumbnailUrl,
+            mediaType,
             maxSupply,
             mintPrice,
             mintStartTime,

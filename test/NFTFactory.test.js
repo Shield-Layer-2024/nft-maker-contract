@@ -32,10 +32,13 @@ describe("NFTFactory", function () {
 
     describe("Collection Creation", function () {
         const collectionName = "Test Collection";
+        const collectionSymbol = "TC";
         const description = "Test Description";
         const maxSupply = 1000;
         const mintPrice = ethers.parseEther("0.1");
-        const imageUrl = "https://example.com/image.png";
+        const mediaUrl = "https://example.com/video.mp4";
+        const thumbnailUrl = "https://example.com/thumbnail.png";
+        const mediaType = 1; // VIDEO
         const whitelistOnly = true;
         const maxMintsPerWallet = 3;
         let mintStartTime;
@@ -52,10 +55,13 @@ describe("NFTFactory", function () {
         it("Should create a new collection with correct parameters", async function () {
             const tx = await nftFactory.createCollection(
                 collectionName,
+                collectionSymbol,
                 description,
                 maxSupply,
                 mintPrice,
-                imageUrl,
+                mediaUrl,
+                thumbnailUrl,
+                mediaType,
                 whitelistOnly,
                 initialWhitelist,
                 maxMintsPerWallet,
@@ -86,12 +92,14 @@ describe("NFTFactory", function () {
                 data: collectionCreatedEvent.data
             });
 
-            const { creator, collection, name, imageUrl: img, maxSupply: supply, mintPrice: price, mintStartTime: start, mintEndTime: end } = decodedEvent.args;
+            const { creator, collection, name, mediaUrl: media, thumbnailUrl: thumbnail, mediaType: type, maxSupply: supply, mintPrice: price, mintStartTime: start, mintEndTime: end } = decodedEvent.args;
             
             expect(creator).to.equal(owner.address);
             expect(collection).to.match(/^0x[a-fA-F0-9]{40}$/);
             expect(name).to.equal(collectionName);
-            expect(img).to.equal(imageUrl);
+            expect(media).to.equal(mediaUrl);
+            expect(thumbnail).to.equal(thumbnailUrl);
+            expect(type).to.equal(mediaType);
             expect(supply).to.equal(maxSupply);
             expect(price).to.equal(mintPrice);
             expect(start).to.equal(mintStartTime);
@@ -107,15 +115,24 @@ describe("NFTFactory", function () {
             expect(await deployedCollection.mintEndTime()).to.equal(mintEndTime);
             expect(await deployedCollection.whitelist(addr1.address)).to.be.true;
             expect(await deployedCollection.whitelist(addr2.address)).to.be.true;
+            
+            // Verify media information
+            const mediaInfo = await deployedCollection.getMediaInfo();
+            expect(mediaInfo.mediaUrl).to.equal(mediaUrl);
+            expect(mediaInfo.thumbnailUrl).to.equal(thumbnailUrl);
+            expect(mediaInfo.mediaType).to.equal(mediaType);
         });
 
         it("Should create collection with no time restrictions", async function () {
             const tx = await nftFactory.createCollection(
                 collectionName,
+                collectionSymbol,
                 description,
                 maxSupply,
                 mintPrice,
-                imageUrl,
+                mediaUrl,
+                thumbnailUrl,
+                mediaType,
                 whitelistOnly,
                 initialWhitelist,
                 maxMintsPerWallet,
@@ -151,10 +168,13 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
-                    imageUrl,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
                     whitelistOnly,
                     initialWhitelist,
                     maxMintsPerWallet,
@@ -169,10 +189,13 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     "",
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
-                    imageUrl,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
                     whitelistOnly,
                     initialWhitelist,
                     maxMintsPerWallet,
@@ -182,14 +205,37 @@ describe("NFTFactory", function () {
             ).to.be.revertedWith("Name is required");
         });
 
+        it("Should fail with empty symbol", async function () {
+            await expect(
+                nftFactory.createCollection(
+                    collectionName,
+                    "",
+                    description,
+                    maxSupply,
+                    mintPrice,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
+                    whitelistOnly,
+                    initialWhitelist,
+                    maxMintsPerWallet,
+                    mintStartTime,
+                    mintEndTime
+                )
+            ).to.be.revertedWith("Symbol is required");
+        });
+
         it("Should fail with zero max supply", async function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     0,
                     mintPrice,
-                    imageUrl,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
                     whitelistOnly,
                     initialWhitelist,
                     maxMintsPerWallet,
@@ -203,10 +249,13 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
-                    imageUrl,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
                     whitelistOnly,
                     initialWhitelist,
                     0,
@@ -220,10 +269,13 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     collectionName,
+                    collectionSymbol,
                     description,
                     maxSupply,
                     mintPrice,
-                    imageUrl,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
                     true,
                     [],
                     maxMintsPerWallet,
@@ -263,10 +315,13 @@ describe("NFTFactory", function () {
 
             await nftFactory.createCollection(
                 "Test",
-                "Test",
+                "TEST",
+                "Test Collection",
                 1000,
                 ethers.parseEther("0.1"),
-                "https://example.com/image.png",
+                "https://example.com/video.mp4",
+                "https://example.com/thumbnail.png",
+                1, // VIDEO
                 false,
                 [],
                 3,
@@ -294,10 +349,13 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     "Test",
-                    "Test",
+                    "TEST",
+                    "Test Collection",
                     1000,
                     ethers.parseEther("0.1"),
-                    "https://example.com/image.png",
+                    "https://example.com/video.mp4",
+                    "https://example.com/thumbnail.png",
+                    1, // VIDEO
                     false,
                     [],
                     3,
@@ -311,10 +369,13 @@ describe("NFTFactory", function () {
             await expect(
                 nftFactory.createCollection(
                     "Test",
-                    "Test",
+                    "TEST",
+                    "Test Collection",
                     1000,
                     ethers.parseEther("0.1"),
-                    "https://example.com/image.png",
+                    "https://example.com/video.mp4",
+                    "https://example.com/thumbnail.png",
+                    1, // VIDEO
                     false,
                     [],
                     3,
@@ -322,6 +383,241 @@ describe("NFTFactory", function () {
                     mintEndTime
                 )
             ).to.not.be.reverted;
+        });
+    });
+
+    describe("Media Type Support", function () {
+        const collectionName = "Media Test Collection";
+        const collectionSymbol = "MTC";
+        const description = "Test media types";
+        const maxSupply = 100;
+        const mintPrice = ethers.parseEther("0.05");
+        const whitelistOnly = false;
+        const initialWhitelist = [];
+        const maxMintsPerWallet = 5;
+        let mintStartTime;
+        let mintEndTime;
+
+        beforeEach(async function() {
+            const currentTime = await time.latest();
+            mintStartTime = currentTime + 3600;
+            mintEndTime = mintStartTime + 7200;
+        });
+
+        it("Should create IMAGE type collection", async function () {
+            const imageUrl = "https://example.com/image.png";
+            const thumbnailUrl = ""; // Empty for image type
+            const mediaType = 0; // IMAGE
+
+            const tx = await nftFactory.createCollection(
+                collectionName,
+                collectionSymbol,
+                description,
+                maxSupply,
+                mintPrice,
+                imageUrl,
+                thumbnailUrl,
+                mediaType,
+                whitelistOnly,
+                initialWhitelist,
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+
+            const receipt = await tx.wait();
+            const collectionCreatedEvent = receipt.logs.find(log => {
+                try {
+                    const decoded = nftFactory.interface.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+                    return decoded.name === "CollectionCreated";
+                } catch {
+                    return false;
+                }
+            });
+
+            const decodedEvent = nftFactory.interface.parseLog({
+                topics: collectionCreatedEvent.topics,
+                data: collectionCreatedEvent.data
+            });
+
+            expect(decodedEvent.args.mediaType).to.equal(0); // IMAGE
+        });
+
+        it("Should create VIDEO type collection", async function () {
+            const videoUrl = "https://example.com/video.mp4";
+            const thumbnailUrl = "https://example.com/thumbnail.png";
+            const mediaType = 1; // VIDEO
+
+            const tx = await nftFactory.createCollection(
+                collectionName,
+                collectionSymbol,
+                description,
+                maxSupply,
+                mintPrice,
+                videoUrl,
+                thumbnailUrl,
+                mediaType,
+                whitelistOnly,
+                initialWhitelist,
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+
+            const receipt = await tx.wait();
+            const collectionCreatedEvent = receipt.logs.find(log => {
+                try {
+                    const decoded = nftFactory.interface.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+                    return decoded.name === "CollectionCreated";
+                } catch {
+                    return false;
+                }
+            });
+
+            const decodedEvent = nftFactory.interface.parseLog({
+                topics: collectionCreatedEvent.topics,
+                data: collectionCreatedEvent.data
+            });
+
+            expect(decodedEvent.args.mediaType).to.equal(1); // VIDEO
+        });
+
+        it("Should create AUDIO type collection", async function () {
+            const audioUrl = "https://example.com/audio.mp3";
+            const thumbnailUrl = "https://example.com/cover.png";
+            const mediaType = 2; // AUDIO
+
+            const tx = await nftFactory.createCollection(
+                collectionName,
+                collectionSymbol,
+                description,
+                maxSupply,
+                mintPrice,
+                audioUrl,
+                thumbnailUrl,
+                mediaType,
+                whitelistOnly,
+                initialWhitelist,
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+
+            const receipt = await tx.wait();
+            const collectionCreatedEvent = receipt.logs.find(log => {
+                try {
+                    const decoded = nftFactory.interface.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+                    return decoded.name === "CollectionCreated";
+                } catch {
+                    return false;
+                }
+            });
+
+            const decodedEvent = nftFactory.interface.parseLog({
+                topics: collectionCreatedEvent.topics,
+                data: collectionCreatedEvent.data
+            });
+
+            expect(decodedEvent.args.mediaType).to.equal(2); // AUDIO
+        });
+
+        it("Should create MODEL_3D type collection", async function () {
+            const modelUrl = "https://example.com/model.glb";
+            const thumbnailUrl = "https://example.com/model-preview.png";
+            const mediaType = 3; // MODEL_3D
+
+            const tx = await nftFactory.createCollection(
+                collectionName,
+                collectionSymbol,
+                description,
+                maxSupply,
+                mintPrice,
+                modelUrl,
+                thumbnailUrl,
+                mediaType,
+                whitelistOnly,
+                initialWhitelist,
+                maxMintsPerWallet,
+                mintStartTime,
+                mintEndTime
+            );
+
+            const receipt = await tx.wait();
+            const collectionCreatedEvent = receipt.logs.find(log => {
+                try {
+                    const decoded = nftFactory.interface.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+                    return decoded.name === "CollectionCreated";
+                } catch {
+                    return false;
+                }
+            });
+
+            const decodedEvent = nftFactory.interface.parseLog({
+                topics: collectionCreatedEvent.topics,
+                data: collectionCreatedEvent.data
+            });
+
+            expect(decodedEvent.args.mediaType).to.equal(3); // MODEL_3D
+        });
+
+        it("Should fail with invalid media type", async function () {
+            const mediaUrl = "https://example.com/file.unknown";
+            const thumbnailUrl = "https://example.com/thumb.png";
+            const invalidMediaType = 99; // Invalid
+
+            await expect(
+                nftFactory.createCollection(
+                    collectionName,
+                    collectionSymbol,
+                    description,
+                    maxSupply,
+                    mintPrice,
+                    mediaUrl,
+                    thumbnailUrl,
+                    invalidMediaType,
+                    whitelistOnly,
+                    initialWhitelist,
+                    maxMintsPerWallet,
+                    mintStartTime,
+                    mintEndTime
+                )
+            ).to.be.revertedWith("Invalid media type");
+        });
+
+        it("Should fail with empty media URL", async function () {
+            const mediaUrl = ""; // Empty
+            const thumbnailUrl = "https://example.com/thumb.png";
+            const mediaType = 1; // VIDEO
+
+            await expect(
+                nftFactory.createCollection(
+                    collectionName,
+                    collectionSymbol,
+                    description,
+                    maxSupply,
+                    mintPrice,
+                    mediaUrl,
+                    thumbnailUrl,
+                    mediaType,
+                    whitelistOnly,
+                    initialWhitelist,
+                    maxMintsPerWallet,
+                    mintStartTime,
+                    mintEndTime
+                )
+            ).to.be.revertedWith("Media URL is required");
         });
     });
 });

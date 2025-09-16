@@ -11,11 +11,21 @@ import "@openzeppelin/contracts/interfaces/IERC4906.sol";
 contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
     using Strings for uint256;
     
+    // Media type enumeration
+    enum MediaType { IMAGE, VIDEO, AUDIO, MODEL_3D }
+    
+    // Media information structure
+    struct MediaInfo {
+        string mediaUrl;      // Primary media file URL
+        string thumbnailUrl;  // Thumbnail/cover image URL (optional)
+        MediaType mediaType;  // Media type
+    }
+    
     uint256 public maxSupply;
     uint256 public totalSupply;
     uint256 public mintPrice;
     string public description;
-    string public image;
+    MediaInfo public media;
     
     // Minting time control
     uint256 public mintStartTime;
@@ -37,7 +47,8 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
     event WhitelistRemoved(address[] addresses);
     event WhitelistStatusUpdated(bool enabled);
     event MintPriceUpdated(uint256 oldPrice, uint256 newPrice);
-    event ImageUpdated(string oldImage, string newImage);
+    event MediaUpdated(string oldMediaUrl, string newMediaUrl, string oldThumbnailUrl, string newThumbnailUrl, MediaType mediaType);
+    event ThumbnailUpdated(string oldThumbnailUrl, string newThumbnailUrl);
     
     constructor(
         string memory _name,
@@ -46,17 +57,25 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
         uint256 _maxSupply,
         uint256 _mintPrice,
         address initialOwner,
-        string memory imageUrl,
+        string memory _mediaUrl,
+        string memory _thumbnailUrl,  // Optional: empty string if not needed
+        MediaType _mediaType,
         bool _whitelistOnly,
         address[] memory initialWhitelist,
         uint256 _maxMintsPerWallet,
         uint256 _mintStartTime,    // Optional: 0 means no start time restriction
         uint256 _mintEndTime       // Optional: 0 means no end time restriction
     ) ERC721(_name, _symbol) Ownable(initialOwner) Pausable() {
+        require(bytes(_mediaUrl).length > 0, "Media URL cannot be empty");
+        
         maxSupply = _maxSupply;
         mintPrice = _mintPrice;
         description = initDescription;
-        image = imageUrl;
+        media = MediaInfo({
+            mediaUrl: _mediaUrl,
+            thumbnailUrl: _thumbnailUrl,
+            mediaType: _mediaType
+        });
         whitelistOnly = _whitelistOnly;
         maxMintsPerWallet = _maxMintsPerWallet;
         
@@ -113,6 +132,24 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
     }
 
     function _generateTokenURI() internal view returns (string memory) {
+        string memory imageField;
+        string memory animationField = "";
+        
+        if (media.mediaType == MediaType.IMAGE) {
+            // For images, use mediaUrl as image field
+            imageField = media.mediaUrl;
+        } else {
+            // For video/audio/3D models, use thumbnail as image, mediaUrl as animation_url
+            imageField = bytes(media.thumbnailUrl).length > 0 
+                ? media.thumbnailUrl 
+                : media.mediaUrl;  // Fallback to mediaUrl if no thumbnail
+            animationField = string(abi.encodePacked(
+                '"animation_url": "', media.mediaUrl, '",'
+            ));
+        }
+        
+        string memory mediaTypeStr = _getMediaTypeString(media.mediaType);
+        
         return string(
             abi.encodePacked(
                 'data:application/json;base64,',
@@ -122,11 +159,13 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
                             abi.encodePacked(
                                 '{"name": "', name(), '",',
                                 '"description": "', description, '",',
-                                '"image": "', image, '",',
+                                '"image": "', imageField, '",',
+                                animationField,
                                 '"external_url": "https://shieldlayer.xyz",',
                                 '"attributes": [',
                                     '{"trait_type": "Collection", "value": "', name(), '"},',
-                                    '{"trait_type": "Total Supply", "value": ', maxSupply.toString(), '}',
+                                    '{"trait_type": "Total Supply", "value": ', maxSupply.toString(), '},',
+                                    '{"trait_type": "Media Type", "value": "', mediaTypeStr, '"}',
                                 ']}'
                             )
                         )
@@ -134,6 +173,14 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
                 )
             )
         );
+    }
+    
+    function _getMediaTypeString(MediaType _mediaType) internal pure returns (string memory) {
+        if (_mediaType == MediaType.IMAGE) return "Image";
+        if (_mediaType == MediaType.VIDEO) return "Video";
+        if (_mediaType == MediaType.AUDIO) return "Audio";
+        if (_mediaType == MediaType.MODEL_3D) return "3D Model";
+        return "Unknown";
     }
 
 
@@ -145,20 +192,56 @@ contract NFTCollection is ERC721URIStorage, Ownable, Pausable {
         emit MintPriceUpdated(oldPrice, _newPrice);
     }
     
-    // Update image URL
-    function setImage(string memory _newImageUrl) external onlyOwner {
-        require(bytes(_newImageUrl).length > 0, "Image URL cannot be empty");
-        string memory oldImage = image;
-        image = _newImageUrl;
+    // Update media URL
+    function setMediaUrl(string memory _newMediaUrl) external onlyOwner {
+        require(bytes(_newMediaUrl).length > 0, "Media URL cannot be empty");
+        string memory oldMediaUrl = media.mediaUrl;
+        string memory oldThumbnailUrl = media.thumbnailUrl;
         
-        emit ImageUpdated(oldImage, _newImageUrl);
+        media.mediaUrl = _newMediaUrl;
+        
+        emit MediaUpdated(oldMediaUrl, _newMediaUrl, oldThumbnailUrl, media.thumbnailUrl, media.mediaType);
         
         // Emit ERC-4906 compliant event to notify marketplaces of metadata update
         if (totalSupply > 0) {
-            // This is the ERC-4906 standard event for batch metadata updates
-            // Most NFT marketplaces listen for this event to refresh metadata
             emit BatchMetadataUpdate(0, totalSupply - 1);
         }
+    }
+    
+    // Update thumbnail URL
+    function setThumbnailUrl(string memory _newThumbnailUrl) external onlyOwner {
+        string memory oldThumbnailUrl = media.thumbnailUrl;
+        media.thumbnailUrl = _newThumbnailUrl;
+        
+        emit ThumbnailUpdated(oldThumbnailUrl, _newThumbnailUrl);
+        
+        // Emit ERC-4906 compliant event to notify marketplaces of metadata update
+        if (totalSupply > 0) {
+            emit BatchMetadataUpdate(0, totalSupply - 1);
+        }
+    }
+    
+    // Update both media and thumbnail URLs
+    function setMedia(string memory _newMediaUrl, string memory _newThumbnailUrl) external onlyOwner {
+        require(bytes(_newMediaUrl).length > 0, "Media URL cannot be empty");
+        
+        string memory oldMediaUrl = media.mediaUrl;
+        string memory oldThumbnailUrl = media.thumbnailUrl;
+        
+        media.mediaUrl = _newMediaUrl;
+        media.thumbnailUrl = _newThumbnailUrl;
+        
+        emit MediaUpdated(oldMediaUrl, _newMediaUrl, oldThumbnailUrl, _newThumbnailUrl, media.mediaType);
+        
+        // Emit ERC-4906 compliant event to notify marketplaces of metadata update
+        if (totalSupply > 0) {
+            emit BatchMetadataUpdate(0, totalSupply - 1);
+        }
+    }
+    
+    // Get media information
+    function getMediaInfo() external view returns (string memory mediaUrl, string memory thumbnailUrl, MediaType mediaType) {
+        return (media.mediaUrl, media.thumbnailUrl, media.mediaType);
     }
 
     
